@@ -16,6 +16,8 @@
 #
 import os
 
+from string import letters
+
 import jinja2
 import webapp2
 from google.appengine.ext import db
@@ -41,6 +43,7 @@ class Blog(db.Model):
     subject = db.StringProperty(required=True)
     content = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
+    last_modified = db.DateTimeProperty(auto_now=True)
 
 
 class MainPage(Handler):
@@ -73,7 +76,13 @@ class NewPostHandler(Handler):
 class PostHandler(Handler):
     def get(self, post_id):
         post = Blog.get_by_id(int(post_id))
+
+        if not post:
+            self.error(404)
+            return
+
         self.render("post.html", post=post)
+
 
 app = webapp2.WSGIApplication([('/blog', MainPage), ('/blog/newpost', NewPostHandler), (r'/blog/(\d+)', PostHandler)],
                               debug=True)

@@ -58,7 +58,7 @@
 <div class="content">
     <div class="post-heading">
         <a href="/blog/{{post.key().id()}}" class="post-subject">{{post.subject}}</a>
-        <div class="post-date">{{post.created}}</div>
+        <div class="post-date">{{post.created.strftime('%b %d, %Y')}}</div>
     </div>
     <pre class="post-content">{{post.content}}</pre>
 </div>
