@@ -157,25 +157,25 @@ class SignupPage(Handler):
 
     def post(self):
         have_error = False
-        self.form_username = self.request.get('username')
-        self.form_password = self.request.get('password')
-        self.form_verify = self.request.get('verify')
-        self.form_email = self.request.get('email')
+        form_username = self.request.get('username')
+        form_password = self.request.get('password')
+        form_verify = self.request.get('verify')
+        form_email = self.request.get('email')
 
-        params = dict(username=self.form_username, email=self.form_email)
+        params = dict(username=form_username, email=form_email)
 
-        if not valid_username(self.form_username):
+        if not valid_username(form_username):
             params['username_error'] = "That's not a valid username."
             have_error = True
 
-        if not valid_password(self.form_password):
+        if not valid_password(form_password):
             params['password_error'] = "That wasn't a valid password."
             have_error = True
-        elif self.form_password != self.form_verify:
+        elif form_password != form_verify:
             params['verify_password_error'] = "Your passwords didn't match."
             have_error = True
 
-        if not valid_email(self.form_email):
+        if not valid_email(form_email):
             params['email_error'] = "That's not a valid email."
             have_error = True
 
@@ -183,13 +183,13 @@ class SignupPage(Handler):
             self.render("signup.html",
                         **params)
         else:
-            u = User.by_name(self.form_username)
+            u = User.by_name(form_username)
             if u:
                 params['username_error'] = 'That user already exists.'
                 self.render("signup.html",
                             **params)
             else:
-                u = User.register(self.form_username, self.form_password, self.form_email)
+                u = User.register(form_username, form_password, form_email)
                 u.put()
 
                 self.login(u)
