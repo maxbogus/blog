@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form method="post">
+    <h2> Login </h2>
+    <table>
+        <tbody>
+        <tr>
+            <td class="label">Username</td>
+            <td><input class="text" name="username" value="{{username}}"></td>
+        </tr>
+        <tr>
+            <td class="label">Password</td>
+            <td><input type="password" name="password" value="{{password}}"></td>
+        </tr>
+        </tbody>
+    </table>
+    {% if password_error %}
+    <label class="error">{{password_error}}</label>
+    <br>
+    {% endif %}
+    {% if username_error %}
+    <label class="error">{{username_error}}</label>
+    <br>
+    {% endif %}
+    {% if auth_check_error %}
+    <label class="error">{{auth_check_error}}</label>
+    <br>
+    {% endif %}
+
+    <input type="submit">
+</form>
+{% endblock %}
