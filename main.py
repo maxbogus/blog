@@ -25,7 +25,7 @@ import jinja2
 import webapp2
 from google.appengine.ext import db
 
-SECRET = 'imsosecret'
+SECRET = 'fghjfhgl6lk5jl4k5jglf9559'
 
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 PASSWORD_RE = re.compile(r"^.{3,20}$")
@@ -75,11 +75,15 @@ def valid_password(password):
 
 
 def valid_email(email):
-    return EMAIL_RE.match(email)
+    return not email or EMAIL_RE.match(email)
 
 
 def valid_cookie(cookie):
     return cookie and COOKIE_RE.match(cookie)
+
+
+def users_key(group='default'):
+    return db.Key.from_path('users', group)
 
 
 class Handler(webapp2.RequestHandler):
@@ -94,6 +98,51 @@ class Handler(webapp2.RequestHandler):
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
 
+    def set_secure_cookie(self, name, val):
+        cookie_val = make_secure_val(val)
+        self.response.headers.add_header('Set-Cookie', '%s=%s; Path=/' % (name, cookie_val))
+
+    def read_secure_cookie(self, name):
+        cookie_val = self.request.cookies.get(name)
+        return cookie_val and check_secure_val(cookie_val)
+
+    def login(self, user):
+        self.set_secure_cookie('user_id', str(user.key().id()))
+
+    def logout(self):
+        self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
+
+    def initialize(self, *a, **kw):
+        webapp2.RequestHandler.initialize(self, *a, **kw)
+        uid = self.read_secure_cookie('user_id')
+        self.user = uid and User.by_id(int(uid))
+
+
+class User(db.Model):
+    name = db.StringProperty(required=True)
+    pw_hash = db.StringProperty(required=True)
+    email = db.StringProperty()
+
+    @classmethod
+    def by_id(cls, uid):
+        return User.get_by_id(uid, parent=users_key())
+
+    @classmethod
+    def by_name(cls, name):
+        u = User.all().filter('name =', name).get()
+        return u
+
+    @classmethod
+    def register(cls, name, pw, email=None):
+        pw_hash = make_pw_hash(name, pw)
+        return User(parent=users_key(), name=name, pw_hash=pw_hash, email=email)
+
+    @classmethod
+    def login(cls, name, pw):
+        u = cls.by_name(name)
+        if u and valid_pw(name, pw, u.pw_hash):
+            return u
+
 
 class Blog(db.Model):
     subject = db.StringProperty(required=True)
@@ -104,44 +153,47 @@ class Blog(db.Model):
 
 class SignupPage(Handler):
     def get(self):
-        form_username = self.request.get('username')
-        form_password = self.request.get('password')
-        form_verify = self.request.get('verify')
-        form_email = self.request.get('email')
-        self.render("signup.html", username=form_username, password=form_password, verify_password=form_verify,
-                    email=form_email)
+        self.render("signup.html")
 
     def post(self):
-        form_username = self.request.get('username')
-        form_password = self.request.get('password')
-        form_verify = self.request.get('verify')
-        form_email = self.request.get('email')
+        have_error = False
+        self.form_username = self.request.get('username')
+        self.form_password = self.request.get('password')
+        self.form_verify = self.request.get('verify')
+        self.form_email = self.request.get('email')
 
-        username = bool(valid_username(form_username))
-        password = bool(valid_password(form_password))
-        email = True
-        if form_email:
-            email = bool(valid_email(form_email))
+        params = dict(username=self.form_username, email=self.form_email)
 
-        username_error = None if username else "That's not a valid username."
-        password_error = None if password else "That wasn't a valid password."
-        verify_password_error = None if form_password == form_verify else "Your passwords didn't match."
-        email_error = None if email else "That's not a valid email."
+        if not valid_username(self.form_username):
+            params['username_error'] = "That's not a valid username."
+            have_error = True
 
-        if form_password != form_verify or not (username and password and email):
+        if not valid_password(self.form_password):
+            params['password_error'] = "That wasn't a valid password."
+            have_error = True
+        elif self.form_password != self.form_verify:
+            params['verify_password_error'] = "Your passwords didn't match."
+            have_error = True
+
+        if not valid_email(self.form_email):
+            params['email_error'] = "That's not a valid email."
+            have_error = True
+
+        if have_error:
             self.render("signup.html",
-                        username=form_username,
-                        password=form_password,
-                        verify_password=form_verify,
-                        email=form_email,
-                        verify_password_error=verify_password_error,
-                        username_error=username_error,
-                        password_error=password_error,
-                        email_error=email_error)
+                        **params)
         else:
-            self.response.headers.add_header('Set-Cookie', 'user=%s' % str(form_username))
-            self.response.headers.add_header('Set-Cookie', 'password=%s' % str(form_password))
-            self.redirect("/blog/welcome")
+            u = User.by_name(self.form_username)
+            if u:
+                params['username_error'] = 'That user already exists.'
+                self.render("signup.html",
+                            **params)
+            else:
+                u = User.register(self.form_username, self.form_password, self.form_email)
+                u.put()
+
+                self.login(u)
+                self.redirect("/blog/welcome")
 
 
 class LoginPage(Handler):
@@ -149,35 +201,16 @@ class LoginPage(Handler):
         self.render("login.html")
 
     def post(self):
-        form_username = self.request.get('username')
-        form_password = self.request.get('password')
+        username = self.request.get('username')
+        password = self.request.get('password')
 
-        username_cookie = self.request.cookies.get('user')
-        password_cookie = self.request.cookies.get('password')
-
-        username = bool(valid_username(form_username))
-        password = bool(valid_password(form_password))
-
-        auth_check = (form_username == username_cookie and form_password == password_cookie)
-
-        username_error = None if username else "Invalid login1"
-        password_error = None if password else "Invalid login2"
-
-        auth_check_error = None if auth_check else "Invalid login"
-
-        if not (username and password):
-            self.render("login.html",
-                        username=form_username,
-                        password=form_password,
-                        username_error=username_error,
-                        password_error=password_error)
-        elif not auth_check:
-            self.render("login.html",
-                        username=form_username,
-                        password=form_password,
-                        auth_check_error=auth_check_error)
-        else:
+        u = User.login(username, password)
+        if u:
+            self.login(u)
             self.redirect("/blog/welcome")
+        else:
+            msg = 'Invalid login'
+            self.render('llogin.html', error=msg)
 
 
 class MainPage(Handler):
@@ -220,15 +253,16 @@ class PostHandler(Handler):
 
 class LogoutPage(Handler):
     def get(self):
-        self.response.headers.add_header('Set-Cookie', 'user=')
-        self.response.headers.add_header('Set-Cookie', 'password=')
+        self.logout()
         self.redirect("/blog/signup")
 
 
 class WelcomeHandler(Handler):
     def get(self):
-        username = self.request.cookies.get('user')
-        self.render("success.html", username=username)
+        if self.user:
+            self.render("success.html", username=self.user.name)
+        else:
+            self.redirect("/blog/signup")
 
 
 app = webapp2.WSGIApplication(
