@@ -148,7 +148,7 @@ class Blog(db.Model):
     subject = db.StringProperty(required=True)
     content = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
-    likes = db.StringListProperty(default=[])
+    likes = db.StringListProperty()
     comments = db.StringListProperty(default=None)
     deleted = db.BooleanProperty(default=False)
     created_by = db.IntegerProperty(default=0)
@@ -331,5 +331,5 @@ app = webapp2.WSGIApplication(
     [('/blog/signup', SignupPage), ('/blog/welcome', WelcomeHandler), ('/blog/login', LoginPage),
      ('/blog/logout', LogoutPage), ('/blog', MainPage),
      ('/blog/newpost', NewPostHandler),
-     (r'/blog/(\d+)', PostHandler), (r'/blog/edit/(\d+)', PostEditHandler), (r'/blog/delete/(\d+)', PostDeleteHandler)],
+     (r'/blog/(\d+)', PostHandler), (r'/blog/edit/(\d+)', PostEditHandler), (r'/blog/delete/(\d+)', PostDeleteHandler), (r'/blog/like/(\d+)', PostLikeHandler)],
     debug=True)
