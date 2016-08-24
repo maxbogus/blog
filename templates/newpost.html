@@ -1,73 +1,22 @@
-<!DOCTYPE>
+{% extends "base.html" %}
 
-<html>
-<head><title>/newpost/</title></head>
-<style type="text/css">
-    body {
-        font-family: sans-serif;
-        width: 800px;
-        margin: 0 auto;
-        padding: 14px;
-    }
-
-    .error {
-        color: red;
-    }
-
-    label {
-        display: block;
-        font-size: 20px;
-    }
-
-    input[type=text] {
-        width: 400px;
-        font-size: 20px;
-        padding: 2px;
-    }
-
-    textarea {
-        width: 400px;
-        height: 200px;
-        font-size: 17px;
-        font-family: monospace;
-    }
-
-    input[type=submit] {
-        font-size: 24px;
-    }
-
-    hr {
-        margin: 20px auto;
-    }
-
-    .art + .art {
-        margin-top: 20px;
-    }
-
-    .art-title {
-        font-weight: bold;
-        font-size: 20px;
-    }
-
-    .art-body {
-        margin: 0;
-        font-size: 17px;
-    }
-</style>
-<body><h1>/newpost/</h1>
+{% block content %}
 <form method="post">
-    <label>
-        <div>subject</div>
-        <input type="text" name="subject" value={{subject}}>
-    </label>
-    <label>
-        <div>content</div>
-        <textarea name="content">{{content}}</textarea>
-    </label>
-    <br>
-    <input type="submit">
-
-    <div class="error">{{error}}</div>
+    <div class="container-fluid">
+        <div class="form-group">
+            <label for="subject">Subject</label>
+            <input type="text" name="subject" id="subject" value={{subject}}>
+        </div>
+        <div class="form-group">
+            <label for="content">Content</label>
+            <textarea name="content" id="content">{{content}}</textarea>
+        </div>
+        <div class="form-group">
+            {% if error %}
+            <p class="error">{{error}}</p>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn btn-default">Submit</button>
+    </div>
 </form>
-</body>
-</html>
+{% endblock %}

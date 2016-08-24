@@ -209,8 +209,8 @@ class LoginPage(Handler):
             self.login(u)
             self.redirect("/blog/welcome")
         else:
-            msg = 'Invalid login'
-            self.render('llogin.html', error=msg)
+            error = 'Invalid login'
+            self.render('login.html', error=error)
 
 
 class MainPage(Handler):
