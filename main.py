@@ -148,10 +148,10 @@ class Blog(db.Model):
     subject = db.StringProperty(required=True)
     content = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
-    likes = db.StringListProperty()
-    comments = db.StringListProperty()
+    likes = db.StringListProperty(default=None)
+    comments = db.StringListProperty(default=None)
     deleted = db.BooleanProperty(default=False)
-    created_by = db.StringProperty()
+    created_by = db.StringProperty(auto_now_add=True)
     last_modified = db.DateTimeProperty(auto_now=True)
 
 
@@ -211,7 +211,6 @@ class LoginPage(Handler):
         u = User.login(username, password)
         if u:
             self.login(u)
-            self.logged = True
             self.redirect("/blog/welcome")
         else:
             error = 'Invalid login'
@@ -220,7 +219,7 @@ class LoginPage(Handler):
 
 class MainPage(Handler):
     def render_front(self, subject='', content='', error=''):
-        posts = db.GqlQuery('SELECT * FROM Blog ORDER BY created DESC')
+        posts = db.GqlQuery('SELECT * FROM Blog WHERE deleted=false ORDER BY created DESC')
         self.render("blog.html", error=error, subject=subject, content=content, posts=posts)
 
     def get(self):
@@ -248,12 +247,33 @@ class NewPostHandler(Handler):
 class PostHandler(Handler):
     def get(self, post_id):
         post = Blog.get_by_id(int(post_id))
+        options = self.request.get('options')
 
         if not post:
             self.error(404)
             return
 
-        self.render("post.html", post=post)
+        if post.deleted:
+            self.error(404)
+            return
+
+        self.render("post.html", post=post, options=options)
+
+    def post(self, post_id):
+        post = Blog.get_by_id(int(post_id))
+        options = self.request.get('options')
+        if options == 'like':
+            post.likes = User.by_name(self.user)
+            post.put()
+            self.render("post.html", post=post, options=options)
+        elif options == 'edit':
+            self.redirect('/blog/editpost/%s' % post)
+        elif options == 'delete':
+            post.deleted = True
+            post.put()
+            self.redirect('/blog')
+        else:
+            self.render("post.html", post=post, options=options)
 
 
 class LogoutPage(Handler):

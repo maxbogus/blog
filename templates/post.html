@@ -10,5 +10,13 @@
     </div>
     <pre class="post-content">{{post.content}}</pre>
     <pre class="post-content text-lowercase small">Comments: {{post.comments}}</pre>
+    {% if logged %}
+    <form method="post">
+        <span><input name="options" type="radio" checked value="like"/> like </span>
+        <span><input name="options" type="radio" checked value="update"/> update  </span>
+        <span><input name="options" type="radio" checked value="delete"/> delete </span>
+        <button type="submit" class="btn btn-default">Submit</button>
+    </form>
+    {% endif%}
 </div>
 {% endblock %}
