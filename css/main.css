@@ -1,8 +1,8 @@
 body {
     font-family: sans-serif;
-    width: 800px;
-    margin: 0 auto;
+    width: 100%;
     padding: 14px;
+    font-weight: 300;
 }
 
 label {
@@ -58,4 +58,11 @@ input[type=submit] {
 
 .label {
     text-align: right
+}
+
+@media only screen and (min-width: 600px) {
+    body {
+        width: 600px;
+        margin: 0 auto;
+    }
 }

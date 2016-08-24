@@ -148,10 +148,10 @@ class Blog(db.Model):
     subject = db.StringProperty(required=True)
     content = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
-    likes = db.StringListProperty(default=None)
+    likes = db.StringListProperty(default=[])
     comments = db.StringListProperty(default=None)
     deleted = db.BooleanProperty(default=False)
-    created_by = db.StringProperty(auto_now_add=True)
+    created_by = db.IntegerProperty(default=0)
     last_modified = db.DateTimeProperty(auto_now=True)
 
 
@@ -261,19 +261,56 @@ class PostHandler(Handler):
 
     def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
-        options = self.request.get('options')
-        if options == 'like':
-            post.likes = User.by_name(self.user)
+        user = User.by_id(self.user)
+        self.render("post.html", post=post, user=user)
+
+
+class PostEditHandler(Handler):
+    def get(self, post_id):
+        post = Blog.get_by_id(int(post_id))
+        subject = post.subject
+        content = post.content
+        edit = True
+
+        if not post:
+            self.error(404)
+            return
+
+        if post.deleted:
+            self.error(404)
+            return
+
+        self.render("newpost.html", subject=subject, content=content, edit=edit, post=post)
+
+    def post(self, post_id):
+        post = Blog.get_by_id(int(post_id))
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+
+        if subject and content:
+            post.subject = subject
+            post.content = content
             post.put()
-            self.render("post.html", post=post, options=options)
-        elif options == 'edit':
-            self.redirect('/blog/editpost/%s' % post)
-        elif options == 'delete':
-            post.deleted = True
-            post.put()
-            self.redirect('/blog')
+
+            self.redirect("/blog/%s" % post.key().id())
         else:
-            self.render("post.html", post=post, options=options)
+            error = "Subject and content are required"
+            self.render("newpost.html", subject=subject, content=content, error=error)
+
+
+class PostDeleteHandler(Handler):
+    def get(self, post_id):
+        post = Blog.get_by_id(int(post_id))
+        post.deleted = True
+        post.put()
+        self.redirect("/blog")
+
+
+class PostLikeHandler(Handler):
+    def get(self, post_id):
+        post = Blog.get_by_id(int(post_id))
+        likes = post.likes
+        self.redirect("/blog/%s" % post_id)
 
 
 class LogoutPage(Handler):
@@ -294,5 +331,5 @@ app = webapp2.WSGIApplication(
     [('/blog/signup', SignupPage), ('/blog/welcome', WelcomeHandler), ('/blog/login', LoginPage),
      ('/blog/logout', LogoutPage), ('/blog', MainPage),
      ('/blog/newpost', NewPostHandler),
-     (r'/blog/(\d+)', PostHandler)],
+     (r'/blog/(\d+)', PostHandler), (r'/blog/edit/(\d+)', PostEditHandler), (r'/blog/delete/(\d+)', PostDeleteHandler)],
     debug=True)
