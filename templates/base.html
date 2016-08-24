@@ -11,7 +11,6 @@
 </head>
 
 <body>
-
 <nav class="navbar navbar-default">
     <div class="container-fluid">
         <div class="navbar-header">
@@ -19,10 +18,13 @@
         </div>
         <ul class="nav navbar-nav">
             <li><a href="/blog">Home</a></li>
-            <li><a href="/blog/newpost">Newpost</a></li>
+            {% if not logged %}
             <li><a href="/blog/signup">Signup</a></li>
             <li><a href="/blog/login">Login</a></li>
+            {% else %}
+            <li><a href="/blog/newpost">Newpost</a></li>
             <li><a href="/blog/logout">Logout</a></li>
+            {% endif %}
         </ul>
     </div>
 </nav>

@@ -12,11 +12,11 @@
             {% set class = "text" %}
 
             {% endif %}
-            <input class="{{class}}" id="login" value="{{username}}">
+            <input class="{{class}}" id="login" name="username" value="{{username}}">
         </div>
         <div class="form-group">
             <label for="password">Password</label>
-            <input type="password" class="text" id="password" value="{{password}}">
+            <input type="password" class="text" id="password" name="password" value="{{password}}">
         </div>
 
         <button type="submit" class="btn btn-default">Submit</button>

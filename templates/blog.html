@@ -7,8 +7,10 @@
     <div class="post-heading">
         <a href="/blog/{{post.key().id()}}" class="post-title">{{post.subject}}</a>
         <div class="post-date">{{post.created.strftime('%b %d, %Y')}}</div>
+        <div class="post-like">Likes: {{post.likes|length}}</div>
     </div>
     <pre class="post-content">{{post.content}}</pre>
+    <pre class="post-content text-lowercase small">Comments: {{post.comments}}</pre>
 </div>
 {% endfor%}
 {% endblock %}

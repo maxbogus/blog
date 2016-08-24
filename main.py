@@ -90,9 +90,9 @@ class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
-    @staticmethod
-    def render_str(template, **params):
+    def render_str(self, template, **params):
         t = jinja_env.get_template(template)
+        params['logged'] = self.read_secure_cookie('user_id')
         return t.render(params)
 
     def render(self, template, **kw):
@@ -148,6 +148,10 @@ class Blog(db.Model):
     subject = db.StringProperty(required=True)
     content = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
+    likes = db.StringListProperty()
+    comments = db.StringListProperty()
+    deleted = db.BooleanProperty(default=False)
+    created_by = db.StringProperty()
     last_modified = db.DateTimeProperty(auto_now=True)
 
 
@@ -207,6 +211,7 @@ class LoginPage(Handler):
         u = User.login(username, password)
         if u:
             self.login(u)
+            self.logged = True
             self.redirect("/blog/welcome")
         else:
             error = 'Invalid login'
