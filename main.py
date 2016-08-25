@@ -284,12 +284,7 @@ class PostHandler(Handler):
     def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
         user = User.by_id(self.user)
-        comment = self.request.get("comment")
-        if comment:
-            post.comments.append(comment)
-            check = post.comments
-            post.put()
-        self.render("post.html", post=post, user=user, comment=comment, check=check)
+        self.render("post.html", post=post, user=user)
 
 
 class PostEditHandler(Handler):
@@ -312,10 +307,8 @@ class PostEditHandler(Handler):
 
     def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
-        # if post and post.author == self.user.username:
         subject = self.request.get('subject')
         content = self.request.get('content')
-
         if subject and content:
             post.subject = subject
             post.content = content
@@ -325,8 +318,6 @@ class PostEditHandler(Handler):
         else:
             error = "Subject and content are required"
             self.render("newpost.html", subject=subject, content=content, error=error)
-            # else:
-            #     self.redirect("/blog")
 
 
 class PostDeleteHandler(Handler):
@@ -350,22 +341,15 @@ class PostDeleteHandler(Handler):
 class PostLikeHandler(Handler):
     def get(self, post_id):
         self.check_restricted_zone()
-        self.render("choose.html")
-
-    def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
-        opt = self.request.get('optradio')
+        author = post.author
         user = self.request.get('author')
-
-        if opt == "Yes":
-            likes = post.liked_by
-            likes.append(user)
-            post.liked_by = likes
-            post.put()
-
-            self.redirect("/blog")
+        if author == user or user in post.liked_by:
+            self.redirect("/blog/%s" % post_id)
         else:
-            self.redirect("/blog/like/%s" % post_id)
+            post.liked_by.append(user)
+            post.put()
+            self.redirect("/blog")
 
 
 class LogoutPage(Handler):
@@ -382,10 +366,90 @@ class WelcomeHandler(Handler):
             self.redirect("/blog/signup")
 
 
+class NewComment(Handler):
+    def get(self, post_id):
+        self.check_restricted_zone()
+        post = Blog.get_by_id(int(post_id))
+        subject = post.subject
+        content = post.content
+        self.render("newcomment.html", subject=subject, content=content, post=post)
+
+    def post(self, post_id):
+        self.check_restricted_zone()
+        user = self.request.get('author')
+        post = Blog.get_by_id(int(post_id))
+        if not post:
+            self.error(404)
+            return
+        comment = self.request.get("comment")
+
+        if comment:
+            c = Comment(comment=comment, post=post, user=user)
+            c.put()
+            self.redirect("/blog/%s" % post_id)
+
+        else:
+            error = "please comment"
+            self.render(
+                "post.html",
+                post=post,
+                error=error)
+
+
+class EditComment(Handler):
+    def get(self, post_id, comment_id):
+        if self.user:
+            post = Post.get_by_id(int(post_id), parent=blog_key())
+            comment = Comment.get_by_id(
+                int(comment_id), parent=self.user.key())
+            if comment:
+                self.render("newcomment.html", subject=post.subject,
+                            content=post.content, comment=comment.comment)
+            else:
+                self.redirect("/error")
+        else:
+            self.redirect("/login")
+
+    def post(self, post_id, comment_id):
+        if self.user:
+            comment = Comment.get_by_id(
+                int(comment_id), parent=self.user.key())
+            if comment.parent().key().id() == self.user.key().id():
+                comment_temp = self.request.get("comment")
+                if comment_temp:
+                    comment.comment = comment_temp
+                    comment.put()
+                    self.redirect("/blog/%s" % str(post_id))
+                else:
+                    error = "Please fill in comment."
+                    self.render(
+                        "newcomment.html",
+                        subject=post.subject,
+                        content=post.content,
+                        comment=comment.comment)
+        else:
+            self.redirect("/login")
+
+
+class DeleteComment(Handler):
+    def get(self, post_id, comment_id):
+        if self.user:
+            comment = Comment.get_by_id(
+                int(comment_id), parent=self.user.key())
+            if comment and comment.author.username == self.user.username:
+                comment.delete()
+                self.redirect("/blog/%s" % str(post_id))
+            else:
+                self.write("Sorry, something went wrong..")
+        else:
+            self.redirect("/login")
+
+
 app = webapp2.WSGIApplication(
     [('/blog/signup', SignupPage), ('/blog/welcome', WelcomeHandler), ('/blog/login', LoginPage),
-     ('/blog/logout', LogoutPage), ('/blog', MainPage),
-     ('/blog/newpost', NewPostHandler),
+     ('/blog/logout', LogoutPage), ('/blog', MainPage), ('/blog/newpost', NewPostHandler),
      (r'/blog/(\d+)', PostHandler), (r'/blog/edit/(\d+)', PostEditHandler), (r'/blog/delete/(\d+)', PostDeleteHandler),
-     (r'/blog/like/(\d+)', PostLikeHandler)],
+     (r'/blog/like/(\d+)', PostLikeHandler), ("/blog/newcomment", NewComment),
+     ("/blog/([0-9]+)/editcomment/([0-9]+)", EditComment),
+     ("/blog/([0-9]+)/deletecomment/([0-9]+)", DeleteComment)],
     debug=True)

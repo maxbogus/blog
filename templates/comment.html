@@ -17,5 +17,16 @@
         {% endif %}
     </div>
     <pre class="post-content">{{post.content}}</pre>
+    {% for comment in post.comments %}
+    <pre class="post-content text-lowercase small">Comments: {{comment}}</pre>
+    {% endfor %}
+    {% if logged %}
+    <div class="form-group">
+        <label for="comment">Comment</label>
+        <textarea name="content" id="comment">{{comment}}</textarea>
+    </div>
+    <button type="submit" class="btn btn-default">Submit</button>
+    {% endif %}
+    {{check}}
 </div>
 {% endblock %}

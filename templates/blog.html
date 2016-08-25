@@ -7,15 +7,18 @@
     <div class="post-heading">
         <a href="/blog/{{post.key().id()}}" class="post-title">{{post.subject}}</a>
         <div class="post-date">{{post.created.strftime('%b %d, %Y')}}</div>
-        <div class="post-like">Likes: {{post.likes|length}}</div>
+        <div class="post-like">Likes: {{post.liked_by|length}}</div>
         {% if logged %}
+        {% if user.name == post.author %}
+        <a class="edit-link btn btn-primary" href="/blog/edit/{{post.key().id()}}">edit</a>
+        <a class="edit-link btn btn-primary" href="/blog/delete/{{post.key().id()}}">delete</a>
+        {% else %}
         <a href="/blog/like/{{post.key().id()}}" class="link">like</a>
-        <a href="/blog/edit/{{post.key().id()}}" class="link">edit</a>
-        <a href="/blog/delete/{{post.key().id()}}" class="link">delete</a>
+        {% endif %}
         {% endif %}
     </div>
     <pre class="post-content">{{post.content}}</pre>
-    <pre class="post-content text-lowercase small">Comments: {{post.comments}}</pre>
+    <input type="hidden" name="author" value="{{user.name}}">
 </div>
 {% endfor%}
 {% endblock %}
