@@ -6,13 +6,24 @@
         <a href="/blog/{{post.key().id()}}" class="post-subject">{{post.subject}}</a>
         <div class="post-date">{{post.created.strftime('%b %d, %Y')}}</div>
         <div class="post-like">Likes: {{post.likes|length}}</div>
-    {% if logged %}
+        {% if logged %}
         <a href="/blog/like/{{post.key().id()}}" class="link">like</a>
         <a href="/blog/edit/{{post.key().id()}}" class="link">edit</a>
         <a href="/blog/delete/{{post.key().id()}}" class="link">delete</a>
-    {% endif%}
+        {% endif%}
     </div>
     <pre class="post-content">{{post.content}}</pre>
-    <pre class="post-content text-lowercase small">Comments: {{post.comments}}</pre>
+    {% for comment in post.comments %}
+    <pre class="post-content text-lowercase small">Comments: {{comment}}</pre>
+    {% endfor %}
+    {% if logged %}
+    <div class="form-group">
+        <label for="comment">Comment</label>
+        <textarea name="content" id="comment">{{comment}}</textarea>
+    </div>
+    <button type="submit" class="btn btn-default">Submit</button>
+    {% endif %}
+
+    {{check}}
 </div>
 {% endblock %}

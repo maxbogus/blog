@@ -93,6 +93,7 @@ class Handler(webapp2.RequestHandler):
     def render_str(self, template, **params):
         t = jinja_env.get_template(template)
         params['logged'] = self.read_secure_cookie('user_id')
+        params["user"] = self.user
         return t.render(params)
 
     def render(self, template, **kw):
@@ -105,6 +106,11 @@ class Handler(webapp2.RequestHandler):
     def read_secure_cookie(self, name):
         cookie_val = self.request.cookies.get(name)
         return cookie_val and check_secure_val(cookie_val)
+
+    def check_restricted_zone(self):
+        logged = self.read_secure_cookie('user_id')
+        if not logged:
+            self.redirect('/blog/login')
 
     def login(self, user):
         self.set_secure_cookie('user_id', str(user.key().id()))
@@ -148,11 +154,25 @@ class Blog(db.Model):
     subject = db.StringProperty(required=True)
     content = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
-    likes = db.StringListProperty()
-    comments = db.StringListProperty(default=None)
+    liked_by = db.ListProperty(str)
+    comments = db.ListProperty(str, indexed=False, default=[])
     deleted = db.BooleanProperty(default=False)
-    created_by = db.IntegerProperty(default=0)
+    author = db.StringProperty(required=True)
     last_modified = db.DateTimeProperty(auto_now=True)
+
+    @property
+    def comments(self):
+        return Comment.all().filter("post = ", str(self.key().id()))
+
+
+class Comment(db.Model):
+    comment = db.StringProperty(required=True)
+    post = db.StringProperty(required=True)
+    author = db.StringProperty(required=True)
+
+    @classmethod
+    def render(cls):
+        cls.render("comment.html")
 
 
 class SignupPage(Handler):
@@ -228,14 +248,16 @@ class MainPage(Handler):
 
 class NewPostHandler(Handler):
     def get(self):
+        self.check_restricted_zone()
         self.render("newpost.html")
 
     def post(self):
         subject = self.request.get('subject')
         content = self.request.get('content')
+        author = self.request.get("author")
 
         if subject and content:
-            a = Blog(subject=subject, content=content)
+            a = Blog(subject=subject, content=content, author=author, liked_by=[])
             a.put()
 
             self.redirect("/blog/%s" % a.key().id())
@@ -262,11 +284,17 @@ class PostHandler(Handler):
     def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
         user = User.by_id(self.user)
-        self.render("post.html", post=post, user=user)
+        comment = self.request.get("comment")
+        if comment:
+            post.comments.append(comment)
+            check = post.comments
+            post.put()
+        self.render("post.html", post=post, user=user, comment=comment, check=check)
 
 
 class PostEditHandler(Handler):
     def get(self, post_id):
+        self.check_restricted_zone()
         post = Blog.get_by_id(int(post_id))
         subject = post.subject
         content = post.content
@@ -284,6 +312,7 @@ class PostEditHandler(Handler):
 
     def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
+        # if post and post.author == self.user.username:
         subject = self.request.get('subject')
         content = self.request.get('content')
 
@@ -296,21 +325,47 @@ class PostEditHandler(Handler):
         else:
             error = "Subject and content are required"
             self.render("newpost.html", subject=subject, content=content, error=error)
+            # else:
+            #     self.redirect("/blog")
 
 
 class PostDeleteHandler(Handler):
     def get(self, post_id):
+        self.check_restricted_zone()
+        self.render("choose.html")
+
+    def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
-        post.deleted = True
-        post.put()
-        self.redirect("/blog")
+        opt = self.request.get('optradio')
+
+        if opt == "Yes":
+            post.deleted = True
+            post.put()
+
+            self.redirect("/blog")
+        else:
+            self.redirect("/blog/delete/%s" % post_id)
 
 
 class PostLikeHandler(Handler):
     def get(self, post_id):
+        self.check_restricted_zone()
+        self.render("choose.html")
+
+    def post(self, post_id):
         post = Blog.get_by_id(int(post_id))
-        likes = post.likes
-        self.redirect("/blog/%s" % post_id)
+        opt = self.request.get('optradio')
+        user = self.request.get('author')
+
+        if opt == "Yes":
+            likes = post.liked_by
+            likes.append(user)
+            post.liked_by = likes
+            post.put()
+
+            self.redirect("/blog")
+        else:
+            self.redirect("/blog/like/%s" % post_id)
 
 
 class LogoutPage(Handler):
@@ -331,5 +386,6 @@ app = webapp2.WSGIApplication(
     [('/blog/signup', SignupPage), ('/blog/welcome', WelcomeHandler), ('/blog/login', LoginPage),
      ('/blog/logout', LogoutPage), ('/blog', MainPage),
      ('/blog/newpost', NewPostHandler),
-     (r'/blog/(\d+)', PostHandler), (r'/blog/edit/(\d+)', PostEditHandler), (r'/blog/delete/(\d+)', PostDeleteHandler), (r'/blog/like/(\d+)', PostLikeHandler)],
+     (r'/blog/(\d+)', PostHandler), (r'/blog/edit/(\d+)', PostEditHandler), (r'/blog/delete/(\d+)', PostDeleteHandler),
+     (r'/blog/like/(\d+)', PostLikeHandler)],
     debug=True)
