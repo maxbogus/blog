@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
 {% block content %}
-<form method="post">
-    <div class="container-fluid">
-        <div class="form-group">
-            <label class="radio-inline"><input type="radio" name="optradio">Yes</label>
-            <label class="radio-inline"><input type="radio" name="optradio">No</label>
+    <form method="post">
+        <div class="container-fluid">
+            <div class="form-group">
+                <label class="radio-inline"><input type="radio" name="optradio">Yes</label>
+                <label class="radio-inline"><input type="radio" name="optradio">No</label>
+            </div>
+            {% if opt == None %}
+                <div class="form-group">
+                    <p class="error">No param was chosen</p>
+                </div>
+            {% endif %}
+            <button type="submit" class="btn btn-default">Submit</button>
         </div>
-        {% if opt == None %}
-        <div class="form-group">
-            <p class="error">No param was chosen</p>
-        </div>
-        {% endif %}
-        <button type="submit" class="btn btn-default">Submit</button>
-    </div>
-</form>
+    </form>
 {% endblock %}

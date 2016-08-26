@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="content">
-    <input type="hidden" name="author" value="{{user.name}}">
-    <div class="post-heading">
-        <a href="/blog/{{post.key().id()}}" class="post-subject">{{post.subject}}</a>
-        <div class="post-date">{{post.created.strftime('%b %d, %Y')}}</div>
-        <div class="post-like">Likes: {{post.liked_by|length}}</div>
-        {% if logged %}
-        {% if user.name == post.author %}
-        <a class="edit-link btn btn-primary" href="/blog/edit/{{post.key().id()}}">edit</a>
-        <a class="edit-link btn btn-primary" href="/blog/delete/{{post.key().id()}}">delete</a>
-        {% else %}
-        <a href="/blog/like/{{post.key().id()}}" class="link">like</a>
+    <div class="content">
+        <input type="hidden" name="author" value="{{ user.name }}">
+        <div class="post-heading">
+            <a href="/blog/{{ post.key().id() }}" class="post-subject">{{ post.subject }}</a>
+            <div class="post-date">{{ post.created.strftime('%b %d, %Y') }}</div>
+            <div class="post-like">Likes: {{ post.liked_by|length }}</div>
+            {% if logged %}
+                {% if user.name == post.author %}
+                    <a class="edit-link btn btn-primary" href="/blog/edit/{{ post.key().id() }}">edit</a>
+                    <a class="edit-link btn btn-primary" href="/blog/delete/{{ post.key().id() }}">delete</a>
+                {% else %}
+                    <a href="/blog/like/{{ post.key().id() }}" class="link">like</a>
+                {% endif %}
+            {% endif %}
+        </div>
+        {% if error %}
+            <p class="error">{{ error }}</p>
         {% endif %}
-        {% endif %}
+        <pre class="post-content">{{ post.content }}</pre>
     </div>
-    {% if error %}
-    <p class="error">{{error}}</p>
-    {% endif %}
-    <pre class="post-content">{{post.content}}</pre>
-</div>
 {% endblock %}

@@ -1,44 +1,44 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid">
-    <form method="post">
-        <div class="form-group-sm form-group">
-            <label for="login">Username</label>
-            {% if username_error %}
-            {% set class_log = "text has-error" %}
-            <p class="error">{{username_error}}</p>
-            {% else %}
-            {% set class_log = "text" %}
-            {% endif %}
-            <input class="{{class_log}}" id="login" name="username" value="{{username}}">
-            <label for="password">Password</label>
-            {% if password_error %}
-            {% set class = "text has-error" %}
-            <p class="error">{{password_error}}</p>
-            {% else %}
-            {% set class = "text" %}
-            {% endif %}
-            <input type="password" class={{class_pas}} id="password" name="password" value="{{password}}">
-            <label for="verify_pass">Verify Password</label>
-            {% if verify_password_error %}
-            {% set class_ver_pass = "text has-error" %}
-            <p class="error">{{verify_password_error}}</p>
-            {% else %}
-            {% set class_ver_pass = "text" %}
-            {% endif %}
-            <input type="password" class="{{class_ver_pass}}" id="verify_pass" name="verify"
-                   value="{{verify_password}}">
-            <label for="email">Email</label>
-            {% if email_error != None%}
-            {% set class_email_err = "text has-error" %}
-            <p class="error">{{email_error}}</p>
-            {% else %}
-            {% set class_email_err = "text" %}
-            {% endif %}
-            <input class={{class_email_err}} id="email" name="email" value="{{email}}">
-        </div>
-        <button type="submit" class="btn btn-default">Submit</button>
-    </form>
-</div>
+    <div class="container-fluid">
+        <form method="post">
+            <div class="form-group-sm form-group">
+                <label for="login">Username</label>
+                {% if username_error %}
+                    {% set class_log = "text has-error" %}
+                    <p class="error">{{ username_error }}</p>
+                {% else %}
+                    {% set class_log = "text" %}
+                {% endif %}
+                <input class="{{ class_log }}" id="login" name="username" value="{{ username }}">
+                <label for="password">Password</label>
+                {% if password_error %}
+                    {% set class = "text has-error" %}
+                    <p class="error">{{ password_error }}</p>
+                {% else %}
+                    {% set class = "text" %}
+                {% endif %}
+                <input type="password" class={{ class_pas }} id="password" name="password" value="{{ password }}">
+                <label for="verify_pass">Verify Password</label>
+                {% if verify_password_error %}
+                    {% set class_ver_pass = "text has-error" %}
+                    <p class="error">{{ verify_password_error }}</p>
+                {% else %}
+                    {% set class_ver_pass = "text" %}
+                {% endif %}
+                <input type="password" class="{{ class_ver_pass }}" id="verify_pass" name="verify"
+                       value="{{ verify_password }}">
+                <label for="email">Email</label>
+                {% if email_error != None %}
+                    {% set class_email_err = "text has-error" %}
+                    <p class="error">{{ email_error }}</p>
+                {% else %}
+                    {% set class_email_err = "text" %}
+                {% endif %}
+                <input class={{ class_email_err }} id="email" name="email" value="{{ email }}">
+            </div>
+            <button type="submit" class="btn btn-default">Submit</button>
+        </form>
+    </div>
 {% endblock %}
