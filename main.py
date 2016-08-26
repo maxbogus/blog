@@ -109,14 +109,18 @@ class Handler(webapp2.RequestHandler):
 
     def check_restricted_zone(self):
         logged = self.read_secure_cookie('user_id')
+        user_name = self.read_secure_cookie('user_login')
         if not logged:
             self.redirect('/blog/login')
+        return user_name
 
     def login(self, user):
         self.set_secure_cookie('user_id', str(user.key().id()))
+        self.set_secure_cookie('user_login', str(user.name))
 
     def logout(self):
         self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
+        self.response.headers.add_header('Set-Cookie', 'user_login=; Path=/')
 
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
@@ -169,10 +173,10 @@ class Comment(db.Model):
     comment = db.StringProperty(required=True)
     post = db.StringProperty(required=True)
     author = db.StringProperty(required=True)
-
-    @classmethod
-    def render(cls):
-        cls.render("comment.html")
+    #
+    # @classmethod
+    # def render(self):
+    #     self.render("comment.html")
 
 
 class SignupPage(Handler):
@@ -372,22 +376,24 @@ class NewComment(Handler):
         post = Blog.get_by_id(int(post_id))
         subject = post.subject
         content = post.content
-        self.render("newcomment.html", subject=subject, content=content, post=post)
+        self.render("newcomment.html",
+                    subject=subject,
+                    content=content,
+                    pkey=post.key())
 
     def post(self, post_id):
         self.check_restricted_zone()
-        user = self.request.get('author')
         post = Blog.get_by_id(int(post_id))
         if not post:
             self.error(404)
             return
         comment = self.request.get("comment")
+        author = self.request.get('author')
 
         if comment:
-            c = Comment(comment=comment, post=post, user=user)
+            c = Comment(comment=comment, post=post_id, parent=self.user.key(), author=author)
             c.put()
-            self.redirect("/blog/%s" % post_id)
-
+            self.redirect("/blog")
         else:
             error = "please comment"
             self.render(
@@ -433,23 +439,23 @@ class EditComment(Handler):
 
 class DeleteComment(Handler):
     def get(self, post_id, comment_id):
-        if self.user:
-            comment = Comment.get_by_id(
-                int(comment_id), parent=self.user.key())
-            if comment and comment.author.username == self.user.username:
+        self.check_restricted_zone()
+        comment = Comment.get_by_id(int(comment_id), parent=self.user.key())
+        if comment:
+            if comment.author == self.check_restricted_zone():
                 comment.delete()
                 self.redirect("/blog/%s" % str(post_id))
             else:
-                self.write("Sorry, something went wrong..")
+                self.write("Sorry, something went wrong. Author doesn't match user. %s / %s" % (comment.author, self.check_restricted_zone()))
         else:
-            self.redirect("/login")
+            self.write("Sorry, something went wrong. No comment.")
 
 
 app = webapp2.WSGIApplication(
     [('/blog/signup', SignupPage), ('/blog/welcome', WelcomeHandler), ('/blog/login', LoginPage),
      ('/blog/logout', LogoutPage), ('/blog', MainPage), ('/blog/newpost', NewPostHandler),
      (r'/blog/(\d+)', PostHandler), (r'/blog/edit/(\d+)', PostEditHandler), (r'/blog/delete/(\d+)', PostDeleteHandler),
-     (r'/blog/like/(\d+)', PostLikeHandler), ("/blog/newcomment", NewComment),
+     (r'/blog/like/(\d+)', PostLikeHandler), ("/blog/([0-9]+)/newcomment", NewComment),
      ("/blog/([0-9]+)/editcomment/([0-9]+)", EditComment),
      ("/blog/([0-9]+)/deletecomment/([0-9]+)", DeleteComment)],
     debug=True)
