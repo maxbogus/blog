@@ -19,6 +19,30 @@
     </div>
     <pre class="post-content">{{post.content}}</pre>
     <input type="hidden" name="author" value="{{user.name}}">
+    {% if user and post.comments %}
+    <div>
+        <span>{{post.comments.count()}} comments</span>
+    </div>
+
+    <div class="post-comments">
+        <h3 class="comment-title">Comments</h3>
+
+        {% for c in post.comments %}
+
+        <div class="comments">
+            <div class="comment-author">{{c.parent().name }} says:</div>
+            <p class="comment-content">{{c.comment}}</p>
+            {% if user.name == c.author %}
+            <a href="/blog/{{post.key().id()}}/editcomment/{{c.key().id()}}" class="btn btn-default btn-xs">Edit comment</a>
+            <a href="/blog/{{post.key().id()}}/deletecomment/{{c.key().id()}}" class="btn btn-default btn-xs">Delete comment</a>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <a href="/blog/{{post.key().id()}}/newcomment?post={{post.key().id()}}" class="btn btn-default btn-xs">add new comment</a>
+
+    </div>
+    {% endif %}
 </div>
 {% endfor%}
 {% endblock %}

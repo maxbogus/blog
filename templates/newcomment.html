@@ -4,13 +4,11 @@
 <form method="post">
     <div class="container-fluid">
         <input type="hidden" name="author" value="{{user.name}}">
+        <div>New Comment for <a href="/blog/{{pkey.id()}}">{{subject}}</a></div>
+        <p>{{content}}</p>
         <div class="form-group">
-            <label for="subject">Subject</label>
-            <input type="text" name="subject" id="subject" value={{subject}}>
-        </div>
-        <div class="form-group">
-            <label for="content">Content</label>
-            <textarea name="content" id="content">{{content}}</textarea>
+            <label for="comment">Comment</label>
+            <textarea name="comment" id="comment">{{comment}}</textarea>
         </div>
         <div class="form-group">
             {% if error %}

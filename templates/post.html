@@ -16,6 +16,9 @@
         {% endif %}
         {% endif %}
     </div>
+    {% if error %}
+    <p class="error">{{error}}</p>
+    {% endif %}
     <pre class="post-content">{{post.content}}</pre>
 </div>
 {% endblock %}
