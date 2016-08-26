@@ -173,10 +173,6 @@ class Comment(db.Model):
     comment = db.StringProperty(required=True)
     post = db.StringProperty(required=True)
     author = db.StringProperty(required=True)
-    #
-    # @classmethod
-    # def render(self):
-    #     self.render("comment.html")
 
 
 class SignupPage(Handler):
@@ -404,37 +400,28 @@ class NewComment(Handler):
 
 class EditComment(Handler):
     def get(self, post_id, comment_id):
-        if self.user:
-            post = Post.get_by_id(int(post_id), parent=blog_key())
-            comment = Comment.get_by_id(
-                int(comment_id), parent=self.user.key())
-            if comment:
-                self.render("newcomment.html", subject=post.subject,
-                            content=post.content, comment=comment.comment)
-            else:
-                self.redirect("/error")
-        else:
-            self.redirect("/login")
+        self.check_restricted_zone()
+        post = Blog.get_by_id(int(post_id))
+        comment = Comment.get_by_id(int(comment_id), parent=self.user.key())
+        if not comment:
+            self.error(404)
+            return
+        self.render("newcomment.html", subject=post.subject, content=post.content, comment=comment.comment,
+                    pkey=post.key())
 
     def post(self, post_id, comment_id):
-        if self.user:
-            comment = Comment.get_by_id(
-                int(comment_id), parent=self.user.key())
-            if comment.parent().key().id() == self.user.key().id():
-                comment_temp = self.request.get("comment")
-                if comment_temp:
-                    comment.comment = comment_temp
-                    comment.put()
-                    self.redirect("/blog/%s" % str(post_id))
-                else:
-                    error = "Please fill in comment."
-                    self.render(
-                        "newcomment.html",
-                        subject=post.subject,
-                        content=post.content,
-                        comment=comment.comment)
+        self.check_restricted_zone()
+        comment = Comment.get_by_id(int(comment_id), parent=self.user.key())
+        post = Blog.get_by_id(int(post_id))
+        comment_edit = self.request.get("comment")
+        if comment_edit:
+            comment.comment = comment_edit
+            comment.put()
+            self.redirect("/blog/%s" % str(post_id))
         else:
-            self.redirect("/login")
+            error = "Please fill in comment."
+            self.render("newcomment.html", subject=post.subject, content=post.content, comment=comment.comment,
+                        error=error, pkey=post.key())
 
 
 class DeleteComment(Handler):
@@ -446,7 +433,8 @@ class DeleteComment(Handler):
                 comment.delete()
                 self.redirect("/blog/%s" % str(post_id))
             else:
-                self.write("Sorry, something went wrong. Author doesn't match user. %s / %s" % (comment.author, self.check_restricted_zone()))
+                self.write("Sorry, something went wrong. Author doesn't match user. %s / %s" % (
+                    comment.author, self.check_restricted_zone()))
         else:
             self.write("Sorry, something went wrong. No comment.")
 
