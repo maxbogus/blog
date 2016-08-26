@@ -157,7 +157,7 @@ class SignupPage(Handler):
 
 class MainPage(Handler):
     def render_front(self, subject='', content='', error=''):
-        query = 'SELECT * FROM Blog WHERE deleted=false ORDER BY created DESC'
+        query = 'SELECT * FROM Blog ORDER BY created DESC'
         posts = dbmodel.db.GqlQuery(query)
         self.render("blog.html",
                     error=error, subject=subject, content=content, posts=posts)
@@ -228,10 +228,6 @@ class PostHandler(Handler):
             self.error(404)
             return
 
-        if post.deleted:
-            self.error(404)
-            return
-
         self.render("post.html", post=post, options=options)
 
     def post(self, post_id):
@@ -249,10 +245,6 @@ class PostEditHandler(Handler):
         edit = True
 
         if not post:
-            self.error(404)
-            return
-
-        if post.deleted:
             self.error(404)
             return
 

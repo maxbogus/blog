@@ -74,7 +74,6 @@ class Blog(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     liked_by = db.ListProperty(str)
     comments = db.ListProperty(str, indexed=False, default=[])
-    deleted = db.BooleanProperty(default=False)
     author = db.StringProperty(required=True)
     last_modified = db.DateTimeProperty(auto_now=True)
 
@@ -84,6 +83,6 @@ class Blog(db.Model):
 
 
 class Comment(db.Model):
-    comment = db.StringProperty(required=True)
+    comment = db.TextProperty(required=True)
     post = db.StringProperty(required=True)
     author = db.StringProperty(required=True)
