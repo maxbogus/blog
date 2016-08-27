@@ -8,24 +8,27 @@
                 <a href="/blog/{{ post.key().id() }}" class="post-title">{{ post.subject }}</a>
                 <div class="post-date">{{ post.created.strftime('%b %d, %Y') }}</div>
                 <div class="post-like">Likes: {{ post.liked_by|length }}</div>
-                {% if logged %}
-                    {% if user.name == post.author %}
-                        <a class="edit-link btn btn-primary" href="/blog/edit/{{ post.key().id() }}">edit</a>
-                        <a class="edit-link btn btn-primary" href="/blog/delete/{{ post.key().id() }}">delete</a>
-                    {% else %}
-                        <a href="/blog/like/{{ post.key().id() }}" class="link">like</a>
-                    {% endif %}
-                {% endif %}
             </div>
             <pre class="post-content">{{ post.content }}</pre>
-            <input type="hidden" name="author" value="{{ user.name }}">
+            <br>
+            {% if logged %}
+                {% if user.name == post.author %}
+                    <a class="btn btn-default" href="/blog/edit/{{ post.key().id() }}">edit</a>
+                    <a class="btn btn-default" href="/blog/delete/{{ post.key().id() }}">delete</a>
+                {% else %}
+                    <a href="/blog/like/{{ post.key().id() }}" class="link">like</a>
+                {% endif %}
+            {% endif %}
             {% if user and post.comments %}
                 <div>
-                    <span>{{ post.comments.count() }} comments</span>
+                    <span></span>
                 </div>
 
                 <div class="post-comments">
-                    <h3 class="comment-title">Comments</h3>
+                    {% if post.comments.count() > 1 %}
+                        {% set ending = 's' %}
+                    {% endif %}
+                    <h4 class="comment-title">{{ post.comments.count() }} comment{{ ending }}</h4>
 
                     {% for c in post.comments %}
 
@@ -40,9 +43,9 @@
                             {% endif %}
                         </div>
                     {% endfor %}
-
+                    <br>
                     <a href="/blog/{{ post.key().id() }}/newcomment?post={{ post.key().id() }}"
-                       class="btn btn-default btn-xs">add new comment</a>
+                       class="btn btn-default btn-xs">Add new comment</a>
 
                 </div>
             {% endif %}

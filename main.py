@@ -89,13 +89,6 @@ class Handler(webapp2.RequestHandler):
         cookie_val = self.request.cookies.get(name)
         return cookie_val and check_secure_val(cookie_val)
 
-    def check_restricted_zone(self):
-        logged = self.read_secure_cookie('user_id')
-        user_name = self.read_secure_cookie('user_login')
-        if not logged:
-            self.redirect('/blog/login')
-        return user_name
-
     def login(self, user):
         self.set_secure_cookie('user_id', str(user.key().id()))
         self.set_secure_cookie('user_login', str(user.name))
@@ -216,7 +209,7 @@ class NewPostHandler(Handler):
         if self.user:
             subject = self.request.get('subject')
             content = self.request.get('content')
-            author = self.request.get("author")
+            author = self.user.name
 
             if subject and content:
                 a = dbmodel.Blog(subject=subject,
@@ -233,7 +226,11 @@ class NewPostHandler(Handler):
 
 
 class PostHandler(Handler):
+    """ Post handler"""
+
     def get(self, post_id):
+        """ If there is a post. It is rendered.
+        If there is not post - 404 error is shown."""
         post = dbmodel.Blog.get_by_id(int(post_id))
 
         if not post:
@@ -243,27 +240,33 @@ class PostHandler(Handler):
             options = self.request.get('options')
             self.render("post.html", post=post, options=options)
 
-    def post(self, post_id):
-        post = dbmodel.Blog.get_by_id(int(post_id))
-        user = dbmodel.User.by_id(self.user)
-        self.render("post.html", post=post, user=user)
-
 
 class PostEditHandler(Handler):
-    def get(self, post_id):
-        self.check_restricted_zone()
-        post = dbmodel.Blog.get_by_id(int(post_id))
-        subject = post.subject
-        content = post.content
-        edit = True
+    """ Post edit handler"""
 
-        if not post:
-            error = 404
-            self.error(error)
-            self.render('error.html', error=error)
+    def get(self, post_id):
+        """ Show edit post form.
+        Authorization is required to access form.
+        Then we check if post exists. If not 404 error is
+        shown to user."""
+        if self.user:
+            post = dbmodel.Blog.get_by_id(int(post_id))
+            subject = post.subject
+            content = post.content
+            edit = True
+
+            if not post:
+                error = 404
+                self.error(error)
+                self.render('error.html', error=error)
+            else:
+                self.render("newpost.html",
+                            subject=subject,
+                            content=content,
+                            edit=edit,
+                            post=post)
         else:
-            self.render("newpost.html", subject=subject,
-                        content=content, edit=edit, post=post)
+            self.redirect('/blog/login')
 
     def post(self, post_id):
         post = dbmodel.Blog.get_by_id(int(post_id))
@@ -282,48 +285,68 @@ class PostEditHandler(Handler):
 
 
 class PostDeleteHandler(Handler):
+    """ Post delete handler"""
+
     def get(self, post_id):
-        self.check_restricted_zone()
-        self.render("choose.html")
-
-    def post(self, post_id):
-        post = dbmodel.Blog.get_by_id(int(post_id))
-        opt = self.request.get('optradio')
-
-        if opt == "on":
-            post.delete()
-            self.redirect("/blog")
+        """ Authentication required. Post_id required to open page.
+        If post was not found - error page is rendered.
+        If post author != current user - error page is rendered."""
+        if self.user:
+            post = dbmodel.Blog.get_by_id(int(post_id))
+            user = self.user.name
+            if not post:
+                error = "No comment."
+                self.render("error.html", error=error)
+            elif post.author != user:
+                author = post.author
+                error = "Author doesn't match user. %s / %s" % (author, user)
+                self.render("error.html", error=error)
+            else:
+                post.delete()
+                self.redirect("/blog")
         else:
-            self.redirect("/blog/delete/%s" % post_id)
+            self.redirect('/blog/login')
 
 
 class PostLikeHandler(Handler):
+    """ Post like handler"""
+
     def get(self, post_id):
-        self.check_restricted_zone()
-        post = dbmodel.Blog.get_by_id(int(post_id))
-        author = post.author
-        user = self.request.get('author')
-        if author == user or user in post.liked_by:
-            self.redirect("/blog/%s" % post_id)
+        """ If user is authorized and his user_name is not
+         in list, his like is added to the list.
+         If there is not post - he is redirected to error page."""
+        if self.user:
+            post = dbmodel.Blog.get_by_id(int(post_id))
+            if not post:
+                error = "No comment."
+                self.render("error.html", error=error)
+            else:
+                author = post.author
+                user = self.user.name
+                if author == user or user in post.liked_by:
+                    self.redirect("/blog/%s" % post_id)
+                else:
+                    post.liked_by.append(user)
+                    post.put()
+                    self.redirect("/blog")
         else:
-            post.liked_by.append(user)
-            post.put()
-            self.redirect("/blog")
+            self.redirect('/blog/login')
 
 
 class NewComment(Handler):
     def get(self, post_id):
-        self.check_restricted_zone()
-        post = dbmodel.Blog.get_by_id(int(post_id))
-        subject = post.subject
-        content = post.content
-        self.render("newcomment.html",
-                    subject=subject,
-                    content=content,
-                    pkey=post.key())
+        if self.user:
+            post = dbmodel.Blog.get_by_id(int(post_id))
+            subject = post.subject
+            content = post.content
+            self.render("newcomment.html",
+                        subject=subject,
+                        content=content,
+                        pkey=post.key())
+        else:
+            self.redirect('/blog/login')
 
     def post(self, post_id):
-        self.check_restricted_zone()
         post = dbmodel.Blog.get_by_id(int(post_id))
         if not post:
             error = 404
@@ -331,7 +354,7 @@ class NewComment(Handler):
             self.render('error.html', error=error)
         else:
             comment = self.request.get("comment")
-            author = self.request.get('author')
+            author = self.user.name
 
             if comment:
                 c = dbmodel.Comment(comment=comment,
@@ -348,22 +371,31 @@ class NewComment(Handler):
 
 
 class EditComment(Handler):
+    """ Edit comment handler."""
+
     def get(self, post_id, comment_id):
-        self.check_restricted_zone()
-        post = dbmodel.Blog.get_by_id(int(post_id))
-        comment = dbmodel.Comment.get_by_id(int(comment_id),
-                                            parent=self.user.key())
-        if not comment or not post:
-            error = 404
-            self.error(error)
-            self.render('error.html', error=error)
+        """ Show edit post form.
+        Authorization is required to access form.
+        Then we check if post exists. If not 404 error is
+        shown to user."""
+        if self.user:
+            post = dbmodel.Blog.get_by_id(int(post_id))
+            comment = dbmodel.Comment.get_by_id(int(comment_id),
+                                                parent=self.user.key())
+            edit = True
+            if not comment or not post:
+                error = 404
+                self.error(error)
+                self.render('error.html', error=error)
+            else:
+                self.render("newcomment.html", subject=post.subject,
+                            edit=edit,
+                            content=post.content, comment=comment.comment,
+                            pkey=post.key())
         else:
-            self.render("newcomment.html", subject=post.subject,
-                        content=post.content, comment=comment.comment,
-                        pkey=post.key())
+            self.redirect('/blog/login')
 
     def post(self, post_id, comment_id):
-        self.check_restricted_zone()
         comment = dbmodel.Comment.get_by_id(int(comment_id),
                                             parent=self.user.key())
         post = dbmodel.Blog.get_by_id(int(post_id))
@@ -380,21 +412,29 @@ class EditComment(Handler):
 
 
 class DeleteComment(Handler):
+    """ Comment delete handler"""
+
     def get(self, post_id, comment_id):
-        self.check_restricted_zone()
-        comment = dbmodel.Comment.get_by_id(int(comment_id),
-                                            parent=self.user.key())
-        if not comment:
-            error = "No comment."
-            self.write(error)
-        elif comment.author != self.check_restricted_zone():
-            author = comment.author
-            user = self.check_restricted_zone()
-            error = "Author doesn't match user. %s / %s" % (author, user)
-            self.write(error)
+        """ Authentication required. Post_id  and
+        comment_id are required to open page.
+        If post or comment was not found - error page is rendered.
+        If post author != current user - error page is rendered."""
+        if self.user:
+            comment = dbmodel.Comment.get_by_id(int(comment_id),
+                                                parent=self.user.key())
+            user = self.user.name
+            if not comment:
+                error = "No comment."
+                self.render("error.html", error=error)
+            elif comment.author != user:
+                author = comment.author
+                error = "Author doesn't match user. %s / %s" % (author, user)
+                self.render("error.html", error=error)
+            else:
+                comment.delete()
+                self.redirect("/blog/%s" % str(post_id))
         else:
-            comment.delete()
-            self.redirect("/blog/%s" % str(post_id))
+            self.redirect('/blog/login')
 
 
 app = webapp2.WSGIApplication(
