@@ -23,6 +23,7 @@ import webapp2
 
 import dbmodel
 
+# regular expressions to check data entries
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 PASSWORD_RE = re.compile(r"^.{3,20}$")
 EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
@@ -33,6 +34,7 @@ loader = jinja2.FileSystemLoader(template_dir)
 jinja_env = jinja2.Environment(loader=loader, autoescape=True)
 
 
+# hash values
 def hash_str(s):
     return hmac.new(dbmodel.SECRET, s).hexdigest()
 
@@ -47,6 +49,7 @@ def check_secure_val(h):
         return val
 
 
+# functions to validate user data (email, pass, username)
 def valid_username(username):
     return USER_RE.match(username)
 
@@ -63,10 +66,7 @@ def valid_cookie(cookie):
     return cookie and COOKIE_RE.match(cookie)
 
 
-def users_key(group='default'):
-    return dbmodel.db.Key.from_path('users', group)
-
-
+# main handler function
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -110,6 +110,7 @@ class Handler(webapp2.RequestHandler):
         self.user = uid and dbmodel.User.by_id(int(uid))
 
 
+# Authentication section
 class SignupPage(Handler):
     def get(self):
         self.render("signup.html")
@@ -148,7 +149,9 @@ class SignupPage(Handler):
                 self.render("signup.html",
                             **params)
             else:
-                u = dbmodel.User.register(form_username, form_password, form_email)
+                u = dbmodel.User.register(form_username,
+                                          form_password,
+                                          form_email)
                 u.put()
 
                 self.login(u)
@@ -197,38 +200,48 @@ class LogoutPage(Handler):
         self.redirect("/blog/signup")
 
 
+class ErrorPageHandler(Handler):
+    def get(self, error_type):
+        self.render("error.html", error_type=error_type)
+
+
 class NewPostHandler(Handler):
     def get(self):
-        self.check_restricted_zone()
-        self.render("newpost.html")
+        if self.user:
+            self.render("newpost.html")
+        else:
+            self.redirect('/blog/login')
 
     def post(self):
-        subject = self.request.get('subject')
-        content = self.request.get('content')
-        author = self.request.get("author")
+        if self.user:
+            subject = self.request.get('subject')
+            content = self.request.get('content')
+            author = self.request.get("author")
 
-        if subject and content:
-            a = dbmodel.Blog(subject=subject,
-                             content=content, author=author, liked_by=[])
-            a.put()
+            if subject and content:
+                a = dbmodel.Blog(subject=subject,
+                                 content=content, author=author, liked_by=[])
+                a.put()
 
-            self.redirect("/blog/%s" % a.key().id())
+                self.redirect("/blog/%s" % a.key().id())
+            else:
+                error = "Subject and content are required"
+                self.render("newpost.html",
+                            subject=subject, content=content, error=error)
         else:
-            error = "Subject and content are required"
-            self.render("newpost.html",
-                        subject=subject, content=content, error=error)
+            self.redirect('/blog/login')
 
 
 class PostHandler(Handler):
     def get(self, post_id):
         post = dbmodel.Blog.get_by_id(int(post_id))
-        options = self.request.get('options')
 
         if not post:
             self.error(404)
-            return
-
-        self.render("post.html", post=post, options=options)
+            self.render('error.html', error=404)
+        else:
+            options = self.request.get('options')
+            self.render("post.html", post=post, options=options)
 
     def post(self, post_id):
         post = dbmodel.Blog.get_by_id(int(post_id))
@@ -245,11 +258,12 @@ class PostEditHandler(Handler):
         edit = True
 
         if not post:
-            self.error(404)
-            return
-
-        self.render("newpost.html",
-                    subject=subject, content=content, edit=edit, post=post)
+            error = 404
+            self.error(error)
+            self.render('error.html', error=error)
+        else:
+            self.render("newpost.html", subject=subject,
+                        content=content, edit=edit, post=post)
 
     def post(self, post_id):
         post = dbmodel.Blog.get_by_id(int(post_id))
@@ -312,39 +326,46 @@ class NewComment(Handler):
         self.check_restricted_zone()
         post = dbmodel.Blog.get_by_id(int(post_id))
         if not post:
-            self.error(404)
-            return
-        comment = self.request.get("comment")
-        author = self.request.get('author')
-
-        if comment:
-            c = dbmodel.Comment(comment=comment, post=post_id,
-                                parent=self.user.key(), author=author)
-            c.put()
-            self.redirect("/blog")
+            error = 404
+            self.error(error)
+            self.render('error.html', error=error)
         else:
-            error = "please comment"
-            self.render(
-                "post.html",
-                post=post,
-                error=error)
+            comment = self.request.get("comment")
+            author = self.request.get('author')
+
+            if comment:
+                c = dbmodel.Comment(comment=comment,
+                                    post=post_id,
+                                    parent=self.user.key(),
+                                    author=author)
+                c.put()
+                self.redirect("/blog")
+            else:
+                error = "please comment"
+                self.render("post.html",
+                            post=post,
+                            error=error)
 
 
 class EditComment(Handler):
     def get(self, post_id, comment_id):
         self.check_restricted_zone()
         post = dbmodel.Blog.get_by_id(int(post_id))
-        comment = dbmodel.Comment.get_by_id(int(comment_id), parent=self.user.key())
-        if not comment:
-            self.error(404)
-            return
-        self.render("newcomment.html", subject=post.subject,
-                    content=post.content, comment=comment.comment,
-                    pkey=post.key())
+        comment = dbmodel.Comment.get_by_id(int(comment_id),
+                                            parent=self.user.key())
+        if not comment or not post:
+            error = 404
+            self.error(error)
+            self.render('error.html', error=error)
+        else:
+            self.render("newcomment.html", subject=post.subject,
+                        content=post.content, comment=comment.comment,
+                        pkey=post.key())
 
     def post(self, post_id, comment_id):
         self.check_restricted_zone()
-        comment = dbmodel.Comment.get_by_id(int(comment_id), parent=self.user.key())
+        comment = dbmodel.Comment.get_by_id(int(comment_id),
+                                            parent=self.user.key())
         post = dbmodel.Blog.get_by_id(int(post_id))
         comment_edit = self.request.get("comment")
         if comment_edit:
@@ -361,7 +382,8 @@ class EditComment(Handler):
 class DeleteComment(Handler):
     def get(self, post_id, comment_id):
         self.check_restricted_zone()
-        comment = dbmodel.Comment.get_by_id(int(comment_id), parent=self.user.key())
+        comment = dbmodel.Comment.get_by_id(int(comment_id),
+                                            parent=self.user.key())
         if not comment:
             error = "No comment."
             self.write(error)
@@ -382,6 +404,7 @@ app = webapp2.WSGIApplication(
      ('/blog/logout', LogoutPage),
      ('/blog', MainPage),
      ('/', MainPage),
+     ('/error/(\d+)', ErrorPageHandler),
      ('/blog/newpost', NewPostHandler),
      (r'/blog/(\d+)', PostHandler),
      (r'/blog/edit/(\d+)', PostEditHandler),
