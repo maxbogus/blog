@@ -297,6 +297,11 @@ class PostEditHandler(Handler):
                 error = 404
                 self.error(error)
                 self.render('error.html', error=error)
+            elif self.user.name != post.author:
+                error = "user name doesn't match author. %s != %s" % (
+                    self.user.name,
+                    post.author)
+                self.render('error.html', error=error)
             else:
                 self.render("newpost.html",
                             subject=subject,
@@ -314,16 +319,19 @@ class PostEditHandler(Handler):
             post = dbmodel.Blog.get_by_id(int(post_id))
             subject = self.request.get('subject')
             content = self.request.get('content')
-            if subject and content:
-                post.subject = subject
-                post.content = content
-                post.put()
+            if self.user.name == post.author:
+                if subject and content:
+                    post.subject = subject
+                    post.content = content
+                    post.put()
 
-                self.redirect("/blog/%s" % post.key().id())
+                    self.redirect("/blog/%s" % post.key().id())
+                else:
+                    error = "Subject and content are required"
+                    self.render("newpost.html",
+                                subject=subject, content=content, error=error)
             else:
-                error = "Subject and content are required"
-                self.render("newpost.html",
-                            subject=subject, content=content, error=error)
+                self.redirect('/blog/login')
         else:
             self.redirect('/blog/login')
 
@@ -450,6 +458,11 @@ class EditComment(Handler):
                 error = 404
                 self.error(error)
                 self.render('error.html', error=error)
+            elif comment.author != self.user.name:
+                error = "Author doesn't match user. %s / %s" % (
+                    comment.author,
+                    self.user.name)
+                self.render("error.html", error=error)
             else:
                 self.render("newcomment.html", subject=post.subject,
                             edit=edit,
@@ -471,6 +484,11 @@ class EditComment(Handler):
                 comment.comment = comment_edit
                 comment.put()
                 self.redirect("/blog/%s" % str(post_id))
+            elif comment.author != self.user.name:
+                error = "Author doesn't match user. %s / %s" % (
+                    comment.author,
+                    self.user.name)
+                self.render("error.html", error=error)
             else:
                 error = "Please fill in comment."
                 self.render("newcomment.html", subject=post.subject,
